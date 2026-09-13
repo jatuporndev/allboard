@@ -7,7 +7,8 @@ export class CameraRig{
  }
  setMode(mode){this.mode=mode;this.orbit.enabled=mode==='orbit';this.velocity.set(0,0,0);if(mode==='orbit'){document.exitPointerLock?.();this.orbit.target.set(0,.3,0);this.orbit.update();}else this.euler.setFromQuaternion(this.camera.quaternion);}
  async lock(){try{await this.canvas.requestPointerLock();}catch{ /* Drag-free selection remains available if browser refuses pointer lock. */ }}
- home({immediate=false}={}){const end=this.camera.aspect<.8?new THREE.Vector3(0,Math.max(22,12/this.camera.aspect),9):new THREE.Vector3(10,12.8,13.8).multiplyScalar(Math.max(1,.95/this.camera.aspect));this.orbit.target.set(0,.3,0);if(immediate){this.transition=null;this.camera.position.copy(end);this.camera.lookAt(this.orbit.target);this.orbit.update();}else this.transition={start:this.camera.position.clone(),end,time:0};}
+ setSide(color='white'){this.side=color==='black'?'black':'white';}
+ home({immediate=false}={}){const end=this.camera.aspect<.8?new THREE.Vector3(0,Math.max(22,12/this.camera.aspect),9):new THREE.Vector3(10,12.8,13.8).multiplyScalar(Math.max(1,.95/this.camera.aspect));if(this.side==='black'){end.x=-end.x;end.z=-end.z;}this.orbit.target.set(0,.3,0);if(immediate){this.transition=null;this.camera.position.copy(end);this.camera.lookAt(this.orbit.target);const damping=this.orbit.enableDamping;this.orbit.enableDamping=false;this.orbit.update();this.camera.position.copy(end);this.camera.lookAt(this.orbit.target);this.orbit.update();this.orbit.enableDamping=damping;}else this.transition={start:this.camera.position.clone(),end,time:0};}
  panOrbit(dt){
   if(!this.orbit.enabled||this.transition)return;
   const has=(...codes)=>codes.some(code=>this.keys.has(code));
