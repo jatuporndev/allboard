@@ -1,0 +1,26 @@
+import { chromium } from '@playwright/test';
+const browser = await chromium.launch({ channel: 'chrome', headless: true });
+const page = await browser.newPage({ viewport: { width: 1800, height: 950 } });
+const errors = [];
+page.on('pageerror', error => errors.push(error.message));
+page.on('console', message => { if (message.type() === 'error' && /THREE|shader|WebGL/i.test(message.text())) errors.push(message.text()); });
+await page.goto('http://127.0.0.1:5173/dev/warriors.html');
+await page.waitForFunction(() => window.workshop?.pieces.length === 7);
+await page.waitForTimeout(1500);
+await page.screenshot({ path: 'artifacts/warrior-lineup.png' });
+console.log(await page.evaluate(() => ({ drawCalls: workshop.renderer.info.render.calls, triangles: workshop.renderer.info.render.triangles, pieces: workshop.pieces.map(p => ({ type: p.userData.piece.type, bones: Object.keys(p.userData.bones).length })) })));
+await page.evaluate(() => {
+  const w = workshop;
+  w.pieces.forEach(p => { p.userData.animated = true; w.attackPose(p, 'windup', 1); });
+});
+await page.waitForTimeout(200);
+await page.screenshot({ path: 'artifacts/warrior-windup.png' });
+await page.evaluate(() => workshop.pieces.forEach(p => workshop.attackPose(p, 'strike', .8)));
+await page.waitForTimeout(200);
+await page.screenshot({ path: 'artifacts/warrior-strike.png' });
+await page.evaluate(() => workshop.pieces.forEach(p => workshop.defeatPose(p, .8)));
+await page.waitForTimeout(200);
+await page.screenshot({ path: 'artifacts/warrior-fracture.png' });
+await browser.close();
+if (errors.length) throw Error(errors.join('\n'));
+console.log('All seven warrior rigs rendered in idle, windup, strike, and fracture poses without shader errors.');
