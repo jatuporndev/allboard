@@ -1,1 +1,21 @@
-{"name":"makruk-temple-of-kings","version":"1.0.0","private":true,"type":"module","scripts":{"dev":"vite --host 0.0.0.0","build":"vite build","preview":"vite preview --host 0.0.0.0","test":"node --test tests/rules.test.js tests/animation.test.js","test:browser":"node scripts/browser-check.mjs","test:warriors":"node scripts/warrior-check.mjs"},"dependencies":{"three":"^0.180.0"},"devDependencies":{"vite":"^6.3.5","@playwright/test":"^1.55.0"}}
+{
+  "name": "makruk-temple-of-kings",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "vite build",
+    "preview": "vite preview --host 0.0.0.0",
+    "test": "node --test tests/rules.test.js tests/animation.test.js tests/bot.test.js tests/camera.test.js",
+    "test:browser": "node scripts/browser-check.mjs",
+    "test:warriors": "node scripts/warrior-check.mjs"
+  },
+  "dependencies": {
+    "three": "^0.180.0"
+  },
+  "devDependencies": {
+    "vite": "^6.3.5",
+    "@playwright/test": "^1.55.0"
+  }
+}

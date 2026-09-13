@@ -1,3 +1,15 @@
+## Immersive match HUD
+
+Matches fill the viewport with compact player plaques and a central turn indicator. Use the bronze Menu button or Escape to pause. The pause overlay contains Resume, New Game, Undo, honor counting, rules, Main Menu, captured pieces, move history, sound, fullscreen, and camera controls. Bot turns and battle animations stop while a dialog is open and continue on resume. Portrait screens use a centered overhead camera to keep temple walls out of the board view.
+
+## Crown of Embers main menu
+
+The game opens in a cinematic temple menu. Choose **Start Game**, then **Solo** to play Ivory against the Ember King bot, or **Local 2 Player** to share a device. Solo uses a two-ply legal-move search; Undo takes back the human/bot turn. Main menu returns to the title screen; selecting a mode starts a fresh match.
+
+Create Room and Join Room are disabled and marked Coming Soon. No online service is connected. Settings saves battle sound and menu camera motion preferences locally. The existing Makruk rules, world, captures, and camera controls remain available in matches.
+
+`npm test` includes bot legality and state immutability tests. `npm run test:browser` checks local gameplay, Solo replies and undo, menu navigation, settings, and mobile layout with the dev server running.
+
 # Makruk — The Temple of Kings
 
 A playable local two-player Thai chess game in an original, procedurally generated 3D temple. Built with Vite and Three.js. No server, account, or network service is required to play.
