@@ -1,0 +1,69 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function validProfile(profile) {
+      return profile.keys().hasOnly(['name', 'emblem', 'updatedAt'])
+        && profile.name is string && profile.name.size() > 0 && profile.name.size() <= 24
+        && profile.emblem in ['crown', 'flame', 'moon'];
+    }
+    match /profiles/{uid} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow create, update: if signedIn() && request.auth.uid == uid && validProfile(request.resource.data);
+      allow delete: if signedIn() && request.auth.uid == uid;
+    }
+    match /games/{game}/rooms/{code} {
+      function member() { return signedIn() && resource.data.players.keys().hasAny([request.auth.uid]); }
+      function joining() {
+        return signedIn() && resource.data.status == 'waiting'
+          && resource.data.expiresAt > request.time.toMillis()
+          && request.auth.uid != resource.data.host
+          && request.resource.data.guest == request.auth.uid
+          && request.resource.data.players.keys().hasOnly([resource.data.host, request.auth.uid])
+          && request.resource.data.players.keys().hasAll(resource.data.players.keys())
+          && request.resource.data.players.diff(resource.data.players).affectedKeys().hasOnly([request.auth.uid])
+          && request.resource.data.players[request.auth.uid].name is string
+          && request.resource.data.players[request.auth.uid].emblem in ['crown','flame','moon']
+          && request.resource.data.players[request.auth.uid].color == 'black'
+          && request.resource.data.players[request.auth.uid].ready == false
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['players','guest']);
+      }
+      // A 12-character room code is the private invitation; collection queries remain filtered.
+      allow get: if signedIn();
+      allow list: if signedIn() && (resource.data.visibility == 'public' || member());
+      allow create: if signedIn()
+        && game == 'makruk' && code.matches('^[A-F0-9]{12}$')
+        && request.resource.data.keys().hasOnly(['name','host','visibility','status','createdAt','expiresAt','players'])
+        && request.resource.data.name is string && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 40
+        && request.resource.data.host == request.auth.uid
+        && request.resource.data.visibility in ['public','private']
+        && request.resource.data.status == 'waiting'
+        && request.resource.data.expiresAt is int
+        && request.resource.data.expiresAt > request.time.toMillis()
+        && request.resource.data.expiresAt <= request.time.toMillis() + 86400000
+        && request.resource.data.players.keys().hasOnly([request.auth.uid])
+        && request.resource.data.players[request.auth.uid].name is string
+        && request.resource.data.players[request.auth.uid].emblem in ['crown', 'flame', 'moon']
+        && request.resource.data.players[request.auth.uid].color == 'white'
+        && request.resource.data.players[request.auth.uid].ready == false;
+      allow update: if signedIn() && (joining() || (member() && (
+        resource.data.status == 'waiting' && member()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['players','guest','status','startedAt','endedAt'])
+          && (request.resource.data.status == 'waiting'
+            ? request.resource.data.players.diff(resource.data.players).affectedKeys().hasOnly([request.auth.uid])
+              && request.resource.data.players[request.auth.uid].diff(resource.data.players[request.auth.uid]).affectedKeys().hasOnly(['ready'])
+              && request.resource.data.players[request.auth.uid].ready is bool
+            : request.auth.uid == resource.data.host
+              && request.resource.data.status in ['playing','closed']
+              && (request.resource.data.status != 'playing' || (resource.data.players.size() == 2
+                && resource.data.players[resource.data.host].ready == true
+                && resource.data.players[resource.data.guest].ready == true)))
+        || resource.data.status == 'playing' && member()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','resigned','endedAt'])
+          && request.resource.data.status == 'finished'
+          && request.resource.data.resigned == request.auth.uid
+      )));
+      allow delete: if signedIn() && member() && resource.data.status in ['waiting','closed','finished'];
+    }
+  }
+}

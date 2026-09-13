@@ -1,0 +1,25 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import {initializeTestEnvironment,assertSucceeds,assertFails} from '@firebase/rules-unit-testing';
+import {doc,setDoc,updateDoc,collection,getDocs,query,where,serverTimestamp} from 'firebase/firestore';
+const env=await initializeTestEnvironment({projectId:'allboard-e45e3',firestore:{host:'127.0.0.1',port:8080,rules:await readFile('firestore.rules','utf8')}});
+test('Firestore profiles and room membership, visibility, and readiness rules',async t=>{
+  t.after(()=>env.cleanup());await env.clearFirestore();
+  const host=env.authenticatedContext('host').firestore(),guest=env.authenticatedContext('guest').firestore(),other=env.authenticatedContext('other').firestore();
+  const profile={name:'Champion',emblem:'crown'};
+  await assertSucceeds(setDoc(doc(host,'profiles/host'),{...profile,updatedAt:serverTimestamp()}));
+  await assertFails(setDoc(doc(guest,'profiles/host'),{...profile,updatedAt:serverTimestamp()}));
+  const roomRef=doc(host,'games/makruk/rooms/ABCDEF123456'),base={name:'room-482019',host:'host',visibility:'private',status:'waiting',createdAt:serverTimestamp(),expiresAt:Date.now()+60000,players:{host:{...profile,color:'white',ready:false}}};
+  await assertSucceeds(setDoc(roomRef,base));
+  await assertSucceeds(setDoc(doc(host,'games/makruk/rooms/ABCDEF123457'),{...base,name:'Public',visibility:'public'}));
+  const visible=await assertSucceeds(getDocs(query(collection(guest,'games','makruk','rooms'),where('visibility','==','public'),where('status','==','waiting'))));assert.equal(visible.size,1);
+  await assertFails(getDocs(collection(other,'games','makruk','rooms')));
+  await assertFails(updateDoc(roomRef,{name:'Intruder'}));
+  await assertSucceeds(updateDoc(roomRef,{guest:'guest',players:{host:{...profile,color:'white',ready:false},guest:{...profile,color:'black',ready:false}}}));
+  await assertFails(updateDoc(roomRef,{status:'playing',startedAt:serverTimestamp()}));
+  const readyPlayers={host:{...profile,color:'white',ready:true},guest:{...profile,color:'black',ready:true}};
+  await assertSucceeds(updateDoc(roomRef,{players:readyPlayers}));
+  await assertSucceeds(updateDoc(roomRef,{status:'playing',startedAt:serverTimestamp()}));
+  await assertFails(updateDoc(roomRef,{name:'Changed after start'}));
+});
