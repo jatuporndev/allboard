@@ -1,13 +1,17 @@
 import * as THREE from 'three';
 import {mesh,makePiece,disposePiece} from './pieces.js';
-import {idlePose} from './poses.js';
+import {bakeRigidParts} from './sculpture.js';
+import {idlePose,resetPose} from './poses.js';
+import {studioReflections} from './lighting.js';
+import {ArmyBatches} from './army-batches.js';
 export const boardPoint=i=>new THREE.Vector3((i%8-3.5)*1.12,.39,(3.5-Math.floor(i/8))*1.12);
 export class World {
  constructor(canvas){
   this.renderer=new THREE.WebGLRenderer({canvas,antialias:true,powerPreference:'high-performance'});this.renderer.setPixelRatio(Math.min(devicePixelRatio,1.8));this.renderer.shadowMap.enabled=true;this.renderer.shadowMap.type=THREE.PCFSoftShadowMap;this.renderer.toneMapping=THREE.ACESFilmicToneMapping;this.renderer.toneMappingExposure=1.4;
   this.scene=new THREE.Scene();this.scene.background=new THREE.Color(0x121b1a);this.scene.fog=new THREE.FogExp2(0x121b1a,.026);this.camera=new THREE.PerspectiveCamera(43,1,.1,100);this.camera.position.set(10,12.8,13.8);this.camera.lookAt(0,0,0);
-  this.scene.add(new THREE.HemisphereLight(0xd3e1d4,0x333023,2));const sun=new THREE.DirectionalLight(0xffe2aa,4);sun.position.set(-5,12,5);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);Object.assign(sun.shadow.camera,{left:-9,right:9,top:9,bottom:-9,near:.5,far:35});sun.shadow.bias=-.0005;this.scene.add(sun);
-  const rim=new THREE.DirectionalLight(0x7fdacb,2.8);rim.position.set(4,7,-9);this.scene.add(rim);
+  this.environmentTarget=studioReflections(this.renderer,this.scene);this.renderer.toneMappingExposure=1.15;
+  this.scene.add(new THREE.HemisphereLight(0xe7e0d2,0x302b23,.85));const sun=new THREE.DirectionalLight(0xffe2aa,3.4);sun.position.set(-5,12,5);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);Object.assign(sun.shadow.camera,{left:-7.5,right:7.5,top:7.5,bottom:-7.5,near:.5,far:35});sun.shadow.bias=-.00012;sun.shadow.normalBias=.018;this.scene.add(sun);
+  const rim=new THREE.DirectionalLight(0xc4d2dd,1.2);rim.position.set(4,7,-9);this.scene.add(rim);
   const stone=new THREE.MeshStandardMaterial({color:0x2e3531,roughness:.9});const trim=new THREE.MeshStandardMaterial({color:0x8c7549,metalness:.7,roughness:.4});const dark=new THREE.MeshStandardMaterial({color:0x141f1d,roughness:.6});
   mesh(new THREE.BoxGeometry(45,.5,45),stone,this.scene,0,-.95);
   for(let x=-20;x<=20;x+=2.5)for(let z=-20;z<=20;z+=2.5)mesh(new THREE.BoxGeometry(2.47,.035,2.47),((x+z)%5===0)?stone:dark,this.scene,x,-.677,z);
@@ -31,26 +35,33 @@ export class World {
     mesh(new THREE.CylinderGeometry(.3,.5,1.2,8),dark,this.scene,x,-.05,z);mesh(new THREE.CylinderGeometry(.55,.2,.28,10),trim,this.scene,x,.63,z);
     const flame=mesh(new THREE.SphereGeometry(.2,10,8),new THREE.MeshBasicMaterial({color:0xffbb59}),this.scene,x,.98,z);flame.scale.y=1.8;this.flames.push(flame);const fire=new THREE.PointLight(0xffa34d,7,8,2);fire.position.set(x,1.3,z);this.scene.add(fire);
   }
-  this.pieces=new Map();this.markers=new THREE.Group();this.scene.add(this.markers);
+  // Temple masonry is static: consolidate hundreds of floor and pillar meshes.
+  const architecture=new THREE.Group();
+  for(const object of [...this.scene.children])if(object.isMesh&&!this.tiles.includes(object)&&!this.flames.includes(object))architecture.add(object);
+  bakeRigidParts(architecture);this.scene.add(architecture);
+  this.pieces=new Map();this.armyBatches=new ArmyBatches(this.scene);this.markers=new THREE.Group();this.scene.add(this.markers);
   const positions=new Float32Array(180*3);for(let i=0;i<positions.length;i+=3){positions[i]=(Math.random()-.5)*27;positions[i+1]=Math.random()*10;positions[i+2]=(Math.random()-.5)*27;}
   const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.BufferAttribute(positions,3));this.dust=new THREE.Points(geo,new THREE.PointsMaterial({color:0xe2bf77,size:.028,transparent:true,opacity:.55,depthWrite:false}));this.scene.add(this.dust);
  }
  label(text,x,z,rotation){const canvas=document.createElement('canvas');canvas.width=128;canvas.height=128;const ctx=canvas.getContext('2d');ctx.fillStyle='#c3aa70';ctx.font='50px Georgia';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(text,64,64);const texture=new THREE.CanvasTexture(canvas);const m=mesh(new THREE.PlaneGeometry(.38,.38),new THREE.MeshBasicMaterial({map:texture,transparent:true,depthWrite:false}),this.scene,x,.372,z);m.rotation.set(-Math.PI/2,0,rotation);}
  sync(state,{resetFacing=false}={}){
+  let changed=false;
   const remaining=new Map(state.board.filter(Boolean).map(p=>[p.id,p]));
   for(const [id,g] of this.pieces){
-   if(!remaining.has(id)||remaining.get(id).type!==g.userData.piece.type){this.scene.remove(g);disposePiece(g);this.pieces.delete(id);}
+   if(!remaining.has(id)||remaining.get(id).type!==g.userData.piece.type){this.scene.remove(g);disposePiece(g);this.pieces.delete(id);changed=true;}
   }
   state.board.forEach((p,i)=>{if(!p)return;let g=this.pieces.get(p.id);
-   if(!g){g=makePiece(p);this.scene.add(g);this.pieces.set(p.id,g);}
+   if(!g){g=makePiece(p);this.scene.add(g);this.pieces.set(p.id,g);changed=true;}
    g.position.copy(boardPoint(i));g.visible=true;g.userData.square=i;g.userData.animated=false;
+   if(g.userData.surrendered&&!state.result){g.userData.surrendered=false;resetPose(g);}
    if(resetFacing)g.rotation.y=p.color==='black'?Math.PI:0;
    Object.values(g.userData.bones).forEach(b=>b.visible=true);
    g.userData.palette.uniforms.fracture.value=0;g.userData.palette.uniforms.dissolve.value=0;
   });
+  if(changed)this.armyBatches?.rebuild(this.pieces);
  }
  highlight(selected,moves,state){for(const child of [...this.markers.children]){child.geometry.dispose();child.material.dispose();this.markers.remove(child);}const add=(i,color,ring)=>{const m=new THREE.Mesh(ring?new THREE.RingGeometry(.39,.46,48):new THREE.CircleGeometry(.13,24),new THREE.MeshBasicMaterial({color,transparent:true,opacity:.8,side:THREE.DoubleSide,depthWrite:false}));m.rotation.x=-Math.PI/2;m.position.copy(boardPoint(i));m.position.y=.403;this.markers.add(m);};if(selected!==null)add(selected,0xf4cf78,true);moves.forEach(i=>add(i,state.board[i]?0xe79065:0xd9c17f,!!state.board[i]));}
  resize(){const {width,height}=this.renderer.domElement.getBoundingClientRect();this.renderer.setSize(width,height,false);this.camera.aspect=width/height;this.camera.updateProjectionMatrix();}
  update(t){this.dust.rotation.y=t*.007;this.flames.forEach((f,i)=>f.scale.y=1.6+Math.sin(t*7+i)*.3);for(const g of this.pieces.values())idlePose(g,t);}
- render(){this.renderer.render(this.scene,this.camera);}
+ render(){this.armyBatches.prepare();try{this.renderer.render(this.scene,this.camera);}finally{this.armyBatches.restore();}}
 }

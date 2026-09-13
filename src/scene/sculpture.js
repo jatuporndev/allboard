@@ -106,18 +106,24 @@ export function makePalette(color) {
       shader.uniforms.uFracture = uniforms.fracture;
       shader.uniforms.uDissolve = uniforms.dissolve;
       shader.vertexShader = 'varying vec3 vSculpturePosition;\n' + shader.vertexShader;
-      shader.vertexShader = shader.vertexShader.replace('#include <project_vertex>', '#include <project_vertex>\nvSculpturePosition = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+      shader.vertexShader = shader.vertexShader.replace('#include <project_vertex>', '#include <project_vertex>\nvSculpturePosition = transformed;');
       shader.fragmentShader = `varying vec3 vSculpturePosition;
 uniform float uFracture;
 uniform float uDissolve;
 float stoneHash(vec3 p) { return fract(sin(dot(p, vec3(12.9898,78.233,37.719))) * 43758.5453); }
+float stoneNoise(vec3 p) {
+ vec3 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);
+ return mix(mix(mix(stoneHash(i),stoneHash(i+vec3(1,0,0)),f.x),mix(stoneHash(i+vec3(0,1,0)),stoneHash(i+vec3(1,1,0)),f.x),f.y),mix(mix(stoneHash(i+vec3(0,0,1)),stoneHash(i+vec3(1,0,1)),f.x),mix(stoneHash(i+vec3(0,1,1)),stoneHash(i+vec3(1,1,1)),f.x),f.y),f.z);
+}
 ` + shader.fragmentShader;
       shader.fragmentShader = shader.fragmentShader.replace('#include <color_fragment>', `#include <color_fragment>
 vec3 stoneP = vSculpturePosition * 15.0;
-float grain = stoneHash(floor(stoneP * 19.0));
-diffuseColor.rgb *= 0.92 + grain * 0.12;
+float grain = stoneNoise(stoneP * 7.0);
+float patina = stoneNoise(stoneP * 1.3);
+diffuseColor.rgb *= 0.84 + grain * 0.10 + patina * 0.16;
 if (uDissolve > stoneHash(floor(stoneP * 2.0)) && uDissolve > 0.0) discard;
 `);
+      shader.fragmentShader = shader.fragmentShader.replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor = clamp(roughnessFactor * (0.85 + grain * 0.3), 0.08, 1.0);');
       shader.fragmentShader = shader.fragmentShader.replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
 vec3 seams = abs(fract(stoneP + sin(stoneP.yzx * 1.8) * 0.16) - 0.5);
 float crack = 1.0 - smoothstep(0.012, 0.045, min(seams.x, min(seams.y, seams.z)));
@@ -128,13 +134,15 @@ totalEmissiveRadiance += vec3(${white ? '1.0, 0.52, 0.12' : '0.12, 0.95, 0.74'})
     return material;
   }
   const palette = {
-    stone: stone(white ? 0xc9bfa4 : 0x30534e, .32, .56),
-    armor: stone(white ? 0xada282 : 0x223832, .62, .4),
-    gold: stone(white ? 0xb98b42 : 0x7c9a80, .78, .34),
-    cloth: stone(white ? 0x50695b : 0x162722, .18, .85),
+    skin: stone(0xd6cbb3, .12, .65),
+    stone: stone(white ? 0xd6cbb3 : 0x30534e, .12, .65),
+    armor: stone(white ? 0xb5a688 : 0x263e3e, .62, .43),
+    gold: stone(white ? 0xb98b42 : 0x7b958d, .78, .38),
+    cloth: stone(white ? 0x675b4b : 0x142926, 0, .94),
     blade: stone(white ? 0xe2d7b5 : 0x8ba995, .83, .27),
-    glow: new THREE.MeshStandardMaterial({ color: white ? 0xffd383 : 0x72dec0, emissive: white ? 0xf9b747 : 0x30c79f, emissiveIntensity: 1.3, roughness: .3 }),
+    glow: new THREE.MeshStandardMaterial({ color: white ? 0xffd383 : 0x72dec0, emissive: white ? 0xf9b747 : 0x30c79f, emissiveIntensity: .65, metalness: .3, roughness: .22 }),
     uniforms,
   };
+  palette.cloth.side = THREE.DoubleSide;
   return palette;
 }

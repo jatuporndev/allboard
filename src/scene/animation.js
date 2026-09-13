@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { boardPoint } from './world.js';
-import { smooth, lerpAngle, walkPose, attackPose, defendPose, defeatPose } from './poses.js';
+import { smooth, lerpAngle, walkPose, attackPose, defendPose, resistPose, defeatPose, surrenderPose } from './poses.js';
 
 const facing = direction => Math.atan2(-direction.x, -direction.z);
 
@@ -37,10 +37,19 @@ export class Animator {
   constructor(world, effects, rig) { Object.assign(this, { world, effects, rig }); this.active = null; }
   get busy() { return !!this.active; }
 
+  checkmate(state, done = () => {}) {
+    if(this.busy||state.result?.reason!=='Checkmate'||!state.result.winner)return false;
+    const king=[...this.world.pieces.values()].find(p=>p.userData.piece.type==='K'&&p.userData.piece.color!==state.result.winner);
+    if(!king||king.userData.surrendered)return false;
+    king.userData.animated=true;
+    this.active={phase:'surrender',king,time:0,done};
+    return true;
+  }
+
   move(move, done) {
     const attacker = this.world.pieces.get(move.piece.id), victim = move.captured ? this.world.pieces.get(move.captured.id) : null;
     const start = boardPoint(move.from), end = boardPoint(move.to), direction = end.clone().sub(start).normalize();
-    const reach = move.piece.type === 'M' ? .92 : move.piece.type === 'K' ? .45 : move.piece.type === 'F' ? .43 : .60;
+    const reach = {M:.92,K:.82,F:.68,P:.82,S:1.02,R:1.1,N:.60}[move.piece.type];
     const approach = victim ? end.clone().addScaledVector(direction, -Math.min(reach, start.distanceTo(end) * .7)) : end;
     if (victim && move.piece.type === 'N') {
       const right = new THREE.Vector3(-direction.z, 0, direction.x);
@@ -71,17 +80,27 @@ export class Animator {
 
   aimWeapon(a, amount) {
     if (a.move.piece.type === 'M') return;
-    const weapon = a.attacker.userData.bones.weapon;
+    const hand = a.attacker.userData.bones.rightHand;
     a.attacker.updateMatrixWorld(true);
-    const localTarget = weapon.parent.worldToLocal(a.contact.clone()).sub(weapon.position).normalize();
+    const localTarget = hand.parent.worldToLocal(a.contact.clone()).sub(hand.position).normalize();
     const rotation = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), localTarget);
-    weapon.quaternion.slerp(rotation, amount);
+    hand.quaternion.slerp(rotation, amount);
   }
 
   update(dt) {
     const a = this.active;
     if (!a) return;
+    // A short impact pause sells contact without delaying the whole animation.
+    if(a.hitPause>0){a.hitPause=Math.max(0,a.hitPause-dt);return;}
     a.time += dt;
+    if(a.phase==='surrender') {
+      surrenderPose(a.king,Math.min(a.time,4.4));
+      if(a.time>=4.4) {
+        a.king.userData.surrendered=true;a.king.userData.animated=false;
+        this.active=null;a.done();
+      }
+      return;
+    }
     const { attacker, victim, profile } = a;
     if (a.hit && victim) {
       a.deathTime += dt;
@@ -107,13 +126,23 @@ export class Animator {
       if (t === 1) { attacker.rotation.y = facing(a.direction); this.next(victim ? 'windup' : 'settle'); }
     } else if (a.phase === 'windup') {
       const t = Math.min(1, a.time / profile.windup);
-      attackPose(attacker, 'windup', t); defendPose(victim, 1);
+      attackPose(attacker, 'windup', t); resistPose(victim,t*.35);
       if (a.move.piece.type === 'M' && a.time <= dt * 1.01) this.effects.ring(attacker.position, a.color, .5, profile.windup);
       if (t === 1) { this.next('strike'); this.rig.cinematic(); }
     } else if (a.phase === 'strike') {
       const t = Math.min(1, a.time / profile.strike);
-      attackPose(attacker, 'strike', t);
-      attacker.position.copy(a.approach).addScaledVector(a.direction, Math.sin(t * Math.PI) * .09);
+      // Accelerate out of the windup, then follow through after contact.
+      const strike=t<.68?Math.pow(t/.68,1.7)*.68:t;
+      attackPose(attacker, 'strike', strike);
+      if(!a.hit)resistPose(victim,t);
+      if(t>=.32&&!a.parried) {
+        a.parried=true;
+        if(a.move.piece.type!=='M') {
+          this.effects.sparks(a.contact,a.color,8,.22);
+          a.hitPause=.035;
+        }
+      }
+      attacker.position.copy(a.approach).addScaledVector(a.direction, Math.sin(t * Math.PI) * (a.move.piece.type==='R'?.13:.09));
       this.aimWeapon(a, smooth(t / .65));
       attacker.updateMatrixWorld(true);
       const tip = attacker.userData.bones.tip.getWorldPosition(new THREE.Vector3());
@@ -126,6 +155,7 @@ export class Animator {
       }
       if (t >= .68 && !a.hit) {
         a.hit = true;
+        a.hitPause=a.move.piece.type==='R'?.085:.055;
         this.effects.impact(a.contact, a.color, a.move.piece.type);
       }
       if (t === 1) { attacker.position.copy(a.approach); this.next('recover'); }

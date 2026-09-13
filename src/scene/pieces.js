@@ -1,50 +1,51 @@
 import * as THREE from 'three';
 import { mesh, joint, ellipsoid, cylinder, tube, ring, flame, relief, bakeRigidParts, makePalette } from './sculpture.js';
 import { face, breastplate, shoulder, skirt, sword, spear, staff, shield, cape } from './warrior-parts.js';
+import { sculpt, gauntlet } from './anatomy.js';
 export { mesh } from './sculpture.js';
 
 export const WARRIORS = {
   K: { name: 'Crowned sovereign', scale: 1, speed: 1.1, stride: .38, attack: 'royal-cleave', windup: .62, strike: .28, recovery: .40 },
-  M: { name: 'Lotus oracle', scale: .91, speed: 1.04, stride: .31, attack: 'lotus-bolt', windup: .72, strike: .38, recovery: .46 },
-  S: { name: 'Naga guardian', scale: .96, speed: 1.13, stride: .35, attack: 'shield-and-spear', windup: .50, strike: .28, recovery: .38 },
+  M: { name: 'Royal attendant', scale: .91, speed: 1.04, stride: .31, attack: 'lotus-bolt', windup: .72, strike: .38, recovery: .46 },
+  S: { name: 'Elder councillor', scale: .96, speed: 1.13, stride: .35, attack: 'shield-and-spear', windup: .50, strike: .28, recovery: .38 },
   N: { name: 'Sky cavalry', scale: 1, speed: 2, stride: .57, attack: 'mounted-sabre', windup: .48, strike: .30, recovery: .48 },
-  R: { name: 'Barge sentinel', scale: 1.02, speed: 1.25, stride: .4, attack: 'anchor-smash', windup: .75, strike: .32, recovery: .5 },
-  P: { name: 'Shell legionary', scale: .73, speed: 1.3, stride: .32, attack: 'spear-thrust', windup: .40, strike: .22, recovery: .32 },
+  R: { name: 'Armored sentinel', scale: 1.02, speed: 1.25, stride: .4, attack: 'anchor-smash', windup: .75, strike: .32, recovery: .5 },
+  P: { name: 'Infantry recruit', scale: .73, speed: 1.3, stride: .32, attack: 'spear-thrust', windup: .40, strike: .22, recovery: .32 },
   F: { name: 'Awakened legionary', scale: .82, speed: 1.25, stride: .34, attack: 'spirit-cut', windup: .5, strike: .3, recovery: .36 },
 };
 
 function makeLeg(parent, p, x, name, bones) {
   const hip = joint(parent, x, .52, 0);
   bones[`${name}Hip`] = hip;
-  ellipsoid(hip, p.cloth, [0, -.12, 0], [.072, .16, .075]);
+  sculpt(hip, p.cloth, [[-.235,.044,.044,0],[-.19,.059,.056,0],[-.10,.079,.074,.009],[-.025,.078,.076,.012],[.035,.055,.058,0]]);
   relief(hip, p.armor, [[-.062, -.04], [-.067, -.19], [0, -.25], [.067, -.19], [.062, -.04]], .045, [0, 0, -.066]);
   const knee = joint(hip, 0, -.235, 0);
   bones[`${name}Knee`] = knee;
   ellipsoid(knee, p.gold, [0, -.015, -.043], [.067, .057, .052]);
-  cylinder(knee, p.armor, .055, .041, .205, [0, -.115, 0]);
+  sculpt(knee, p.armor, [[-.215,.035,.038,0],[-.17,.041,.046,.004],[-.10,.057,.064,.016],[-.04,.059,.055,.005],[0,.048,.046,0]]);
+  relief(knee, p.gold, [[0,0],[-.036,-.035],[-.024,-.17],[0,-.20],[.024,-.17],[.036,-.035]], .013, [0,-.014,-.047]);
   tube(knee, p.gold, [[0, -.06, -.057], [0, -.2, -.047]], .009);
   ring(knee, p.gold, .051, .009, [0, -.185, 0]);
   const ankle = joint(knee, 0, -.215, 0);
   bones[`${name}Ankle`] = ankle;
-  ellipsoid(ankle, p.armor, [0, -.02, -.05], [.065, .052, .115]);
+  sculpt(ankle, p.armor, [[-.070,.054,.093,-.042],[-.052,.063,.114,-.052],[-.027,.060,.109,-.046],[.006,.044,.058,-.002],[.04,.035,.038,.006]]);
   tube(ankle, p.gold, [[-.048, -.04, -.12], [0, -.04, -.15], [.048, -.04, -.12]], .008);
 }
 
 function makeArm(parent, p, sign, type, name, bones) {
   const arm = joint(parent, sign * .235, .35, 0);
   bones[`${name}Arm`] = arm;
-  shoulder(arm, p, sign, type === 'S' || type === 'R');
-  ellipsoid(arm, p.stone, [0, -.12, 0], [.062, .14, .066]);
+  shoulder(arm, p, sign, type === 'R', type);
+  sculpt(arm, p.skin, [[-.235,.040,.042,0],[-.17,.050,.055,-.007],[-.09,.066,.066,-.005],[-.018,.073,.071,.003],[.022,.050,.049,0]]);
   cylinder(arm, p.gold, .069, .064, .04, [0, -.16, 0]);
   const elbow = joint(arm, 0, -.235, 0);
   bones[`${name}Elbow`] = elbow;
-  ellipsoid(elbow, p.armor, [0, -.1, 0], [.061, .12, .066]);
+  sculpt(elbow, p.armor, [[-.21,.031,.031,0],[-.17,.039,.037,0],[-.085,.057,.056,-.005],[-.025,.057,.052,0],[.01,.042,.042,0]]);
   tube(elbow, p.gold, [[0, -.035, -.065], [0, -.155, -.055]], .01);
   ring(elbow, p.gold, .059, .009, [0, -.15, 0]);
   const hand = joint(elbow, 0, -.21, 0);
   bones[`${name}Hand`] = hand;
-  ellipsoid(hand, p.stone, [0, -.02, 0], [.046, .064, .041]);
-  for (let i = 0; i < 3; i++) tube(hand, p.gold, [[-.036, -.008 - i * .019, -.033], [.026, -.008 - i * .019, -.034]], .004);
+  gauntlet(hand, p);
   return hand;
 }
 
@@ -55,21 +56,22 @@ function humanoid(parent, p, type, bones, mounted = false) {
   makeLeg(body, p, .105, 'right', bones);
   const waist = joint(body, 0, .53, 0);
   bones.waist = waist;
-  skirt(waist, p, type === 'M');
+  skirt(waist, p, false, type);
   breastplate(waist, p, type);
   const neck = joint(waist, 0, .48, 0);
   bones.neck = neck;
   cylinder(neck, p.gold, .082, .082, .08, [0, -.015, 0]);
   const head = joint(neck, 0, .11, 0);
+  head.scale.setScalar(type==='R'?.92:.86);
   bones.head = head;
-  face(head, p, type);
+  face(head, p, type, bones);
   const leftHand = makeArm(waist, p, -1, type, 'left', bones);
   const rightHand = makeArm(waist, p, 1, type, 'right', bones);
-  if (type === 'K' || type === 'M' || type === 'F') bones.cape = cape(waist, p, type === 'K');
+  if (type === 'K' || type === 'M' || type === 'F') bones.cape = cape(waist, p, type === 'K', bones);
 
   let armament;
   if (type === 'M') {
-    armament = staff(rightHand, p);
+    armament = sword(rightHand, p);
     bones.focus = joint(leftHand, 0, -.025, -.08);
     mesh(new THREE.OctahedronGeometry(.06), p.glow, bones.focus);
   } else if (type === 'P' || type === 'S') {
@@ -150,7 +152,7 @@ function mountHorse(parent, p, bones) {
   humanoid(saddle, p, 'N', bones, true);
 }
 
-export function makePiece(piece) {
+function buildPiece(piece) {
   const root = new THREE.Group();
   const visual = joint(root);
   const bones = {};
@@ -169,7 +171,37 @@ export function makePiece(piece) {
   return root;
 }
 
+const sculptures = new Map();
+
+export function makePiece(piece) {
+  let cached=sculptures.get(piece.type);
+  if(!cached) {
+    const root=buildPiece(piece),data=root.userData;
+    data.body.name='visualRoot';
+    for(const [name,bone]of Object.entries(data.bones))bone.name=`joint:${name}`;
+    const slots=new Map(Object.entries(data.palette).filter(([,m])=>m?.isMaterial).map(([key,m])=>[m,key]));
+    root.traverse(object=>{if(object.isMesh)object.userData.paletteSlot=slots.get(object.material);});
+    root.userData={};const template=root.clone(true);root.userData=data;
+    sculptures.set(piece.type,{template,rest:data.rest,profile:data.profile,refs:1});
+    return root;
+  }
+  cached.refs++;
+  const root=cached.template.clone(true),palette=makePalette(piece.color),bones={};let body;
+  root.traverse(object=>{
+    if(object.name==='visualRoot')body=object;
+    if(object.name.startsWith('joint:'))bones[object.name.slice(6)]=object;
+    if(object.isMesh)object.material=palette[object.userData.paletteSlot];
+  });
+  root.rotation.y=piece.color==='black'?Math.PI:0;
+  root.userData={piece,body,bones,rest:cached.rest,palette,profile:cached.profile,animated:false};
+  return root;
+}
+
 export function disposePiece(piece) {
-  piece.traverse(object => object.geometry?.dispose());
+  const cached=sculptures.get(piece.userData.piece.type);
+  if(cached&&--cached.refs===0) {
+    const geometries=new Set();cached.template.traverse(object=>{if(object.geometry)geometries.add(object.geometry);});
+    geometries.forEach(geometry=>geometry.dispose());sculptures.delete(piece.userData.piece.type);
+  }
   for (const material of Object.values(piece.userData.palette)) if (material?.isMaterial) material.dispose();
 }

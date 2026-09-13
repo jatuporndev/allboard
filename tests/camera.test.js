@@ -19,3 +19,14 @@ test('disabled orbit and home transitions ignore movement; target stays within b
  r.orbit.enabled=true;r.transition={};r.panOrbit(1);assert.equal(r.orbit.target.x,0);
  r.transition=null;r.panOrbit(100);assert.ok(Math.abs(r.orbit.target.x)<=9&&Math.abs(r.orbit.target.z)<=12);
 });
+
+test('home remembers the online seat for desktop, mobile and recentering',()=>{
+ const r=rig();r.camera=new THREE.PerspectiveCamera(43,1.5,.1,100);r.orbit.update=()=>{};
+ for(const aspect of [1.5,390/844]) {
+  r.camera.aspect=aspect;r.setSide('white');r.home({immediate:true});const white=r.camera.position.clone();
+  r.setSide('black');r.home({immediate:true});
+  assert.equal(r.camera.position.z,-white.z);assert.equal(r.camera.position.x,-white.x);assert.equal(r.camera.position.y,white.y);
+  r.camera.position.set(3,4,5);r.home();assert(r.transition.end.z<0);
+ }
+ r.setSide('white');r.home({immediate:true});assert(r.camera.position.z>0);
+});
