@@ -8,7 +8,7 @@ export function mountMenu(){
    <div class="menu-kicker">AN ANCIENT RIVALRY. REAWAKENED.</div>
    <h1>Crown<span>of</span>Embers</h1><div class="menu-subtitle">THE MAKRUK CHRONICLES</div>
    <p class="menu-verse">Kingdoms fall. The fire remembers.</p>
-   <div id="menu-home" class="menu-options"><button id="start-menu" class="menu-primary">Start Game <span>⟶</span></button><button disabled>Create Room <small>COMING SOON</small></button><button disabled>Join Room <small>COMING SOON</small></button><button id="settings-menu">Settings <span>⚙</span></button></div>
+   <div id="menu-home" class="menu-options"><button id="start-menu" class="menu-primary">Start Game <span>⟶</span></button><button id="character-menu">Create Character <small>YOUR LEGEND</small></button><button id="multiplayer-menu">Multiplayer <small>ONLINE</small></button><button id="settings-menu">Settings <span>⚙</span></button></div>
    <div id="mode-menu" class="menu-options" hidden><div class="menu-kicker">CHOOSE YOUR OPPONENT</div><button id="solo-game" class="menu-primary">Solo <small>VS BOT</small></button><button id="local-game">Local 2 Player <small>SHARED DEVICE</small></button><button id="mode-back" class="menu-back">← Back</button></div>
   </div><div class="menu-bottom"><span>หมากรุกไทย · THE ART OF THAI CHESS</span><span>STRATEGY, CARVED IN STONE</span></div>
  </section>

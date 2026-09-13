@@ -2,6 +2,7 @@ import {chromium} from '@playwright/test';
 import {mkdir} from 'node:fs/promises';
 const browser=await chromium.launch({channel:'chrome',headless:true,args:['--enable-webgl','--ignore-gpu-blocklist']});
 const page=await browser.newPage({viewport:{width:1440,height:1000},deviceScaleFactor:1});
+await page.addInitScript(()=>localStorage.setItem('crown-language','en'));
 const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error'&&/THREE|shader|WebGL/i.test(m.text()))errors.push(m.text());});
 await page.goto('http://127.0.0.1:5173');await page.waitForSelector('#scene');await page.waitForTimeout(1800);
 await mkdir('artifacts',{recursive:true});await page.screenshot({path:'artifacts/desktop.png',fullPage:true});
@@ -22,7 +23,7 @@ if(!await page.locator('#pause-dialog').isVisible())await page.locator('#pause-g
 await page.setViewportSize({width:1440,height:1000});await page.waitForTimeout(1400);
 await clickSquare(20);await clickSquare(28);await page.locator('#pause-game').click();await page.waitForTimeout(1800);if(await page.locator('#move-number').innerText()!=='01 MOVES')throw Error('Bot moved while paused');await page.screenshot({path:'artifacts/pause-desktop.png'});await page.keyboard.press('Escape');await page.waitForFunction(()=>document.querySelector('#move-number').textContent==='02 MOVES'&&!document.querySelector('#new-game').disabled,{},{timeout:20000});
 await page.locator('#pause-game').click();await page.locator('#undo').click();if(await page.locator('#move-number').innerText()!=='00 MOVES')throw Error('Solo undo failed');
-if(!await page.locator('#pause-dialog').isVisible())await page.locator('#pause-game').click();await page.locator('#return-menu').click();if(await page.locator('#main-menu button:disabled').count()!==2)throw Error('Online items should be disabled');
+if(!await page.locator('#pause-dialog').isVisible())await page.locator('#pause-game').click();await page.locator('#return-menu').click();if(!await page.locator('#multiplayer-menu').isEnabled()||!await page.locator('#character-menu').isEnabled())throw Error('Online menus unavailable');
 await page.locator('#settings-menu').click();await page.locator('#setting-motion').uncheck();await page.locator('#settings-close').click();
 await page.screenshot({path:'artifacts/menu-desktop.png'});
 await page.setViewportSize({width:390,height:844});await page.screenshot({path:'artifacts/menu-mobile.png'});

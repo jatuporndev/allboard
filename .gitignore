@@ -1,3 +1,9 @@
 node_modules/
 dist/
 test-results/
+.tools/
+.firebase/
+*-debug.log
+.env.local
+.env
+artifacts/

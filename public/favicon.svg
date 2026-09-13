@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>Crown of Embers</title>
+  <defs>
+    <linearGradient id="bronze" x2="0" y2="1">
+      <stop stop-color="#f3dc9e"/>
+      <stop offset="1" stop-color="#ad7e37"/>
+    </linearGradient>
+  </defs>
+  <rect x="1" y="1" width="62" height="62" rx="13" fill="#101e19" stroke="#b59452" stroke-width="2"/>
+  <path d="m12 21 12 10 8-17 8 17 12-10-6 24H18Z" fill="url(#bronze)"/>
+  <path d="M20 51h24" stroke="#d8b771" stroke-width="4" stroke-linecap="round"/>
+  <path d="m32 30-5 8 5 5 5-5Z" fill="#8e351e"/>
+</svg>
