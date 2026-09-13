@@ -7,7 +7,7 @@ export class CameraRig{
  }
  setMode(mode){this.mode=mode;this.orbit.enabled=mode==='orbit';this.velocity.set(0,0,0);if(mode==='orbit'){document.exitPointerLock?.();this.orbit.target.set(0,.3,0);this.orbit.update();}else this.euler.setFromQuaternion(this.camera.quaternion);}
  async lock(){try{await this.canvas.requestPointerLock();}catch{ /* Drag-free selection remains available if browser refuses pointer lock. */ }}
- home(){this.transition={start:this.camera.position.clone(),end:this.camera.aspect<.8?new THREE.Vector3(0,Math.max(22,12/this.camera.aspect),9):new THREE.Vector3(10,12.8,13.8).multiplyScalar(Math.max(1,.95/this.camera.aspect)),time:0};this.orbit.target.set(0,.3,0);}
+ home({immediate=false}={}){const end=this.camera.aspect<.8?new THREE.Vector3(0,Math.max(22,12/this.camera.aspect),9):new THREE.Vector3(10,12.8,13.8).multiplyScalar(Math.max(1,.95/this.camera.aspect));this.orbit.target.set(0,.3,0);if(immediate){this.transition=null;this.camera.position.copy(end);this.camera.lookAt(this.orbit.target);this.orbit.update();}else this.transition={start:this.camera.position.clone(),end,time:0};}
  panOrbit(dt){
   if(!this.orbit.enabled||this.transition)return;
   const has=(...codes)=>codes.some(code=>this.keys.has(code));

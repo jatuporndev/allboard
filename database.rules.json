@@ -1,0 +1,121 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "profiles": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid",
+        ".validate": "newData.hasChildren(['name','emblem'])",
+        "name": {
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 24"
+        },
+        "emblem": {
+          ".validate": "newData.val() === 'crown' || newData.val() === 'flame' || newData.val() === 'moon'"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
+    "games": {
+      "makruk": {
+        "rooms": {
+          ".indexOn": [
+            "visibility"
+          ],
+          ".read": "auth != null && query.orderByChild === 'visibility' && query.equalTo === 'public'",
+          "$room": {
+            ".read": "auth != null && $room.matches(/^[A-F0-9]{12}$/)",
+            ".write": "auth != null && $room.matches(/^[A-F0-9]{12}$/) && newData.exists() && ((!data.exists() && newData.child('host').val() === auth.uid) || (data.child('expiresAt').val() > now && (data.child('players').child(auth.uid).exists() || (data.child('status').val() === 'waiting' && !data.child('guest').exists() && newData.child('guest').val() === auth.uid && newData.child('players').child(auth.uid).exists()))))",
+            ".validate": "newData.hasChildren(['name','host','visibility','status','createdAt','expiresAt','revision','turn','players']) && ((!data.child('guest').exists() && (!newData.child('guest').exists() || (data.child('status').val() === 'waiting' && newData.child('guest').val() === auth.uid))) || (data.child('guest').exists() && (newData.child('guest').val() === data.child('guest').val() || (data.child('status').val() === 'waiting' && data.child('guest').val() === auth.uid && !newData.child('guest').exists())))) && (!data.child('actions').exists() || newData.child('actions').exists())",
+            "guest": {
+              ".validate": "newData.isString() && newData.val() !== newData.parent().child('host').val()"
+            },
+            "name": {
+              ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 40 && (!data.exists() || newData.val() === data.val())"
+            },
+            "host": {
+              ".validate": "newData.isString() && ((!data.exists() && newData.val() === auth.uid) || newData.val() === data.val())"
+            },
+            "visibility": {
+              ".validate": "(newData.val() === 'public' || newData.val() === 'private') && (!data.exists() || newData.val() === data.val())"
+            },
+            "createdAt": {
+              ".validate": "newData.isNumber() && ((!data.exists() && newData.val() <= now + 60000 && newData.val() >= now - 60000) || newData.val() === data.val())"
+            },
+            "expiresAt": {
+              ".validate": "newData.isNumber() && ((!data.exists() && newData.val() > now && newData.val() <= now + 86500000) || newData.val() === data.val())"
+            },
+            "status": {
+              ".validate": "(!data.exists() && newData.val() === 'waiting') || (data.exists() && (newData.val() === data.val() || (data.val() === 'waiting' && newData.val() === 'closed' && data.parent().child('host').val() === auth.uid) || (data.val() === 'waiting' && newData.val() === 'playing' && data.parent().child('host').val() === auth.uid && data.parent().child('guest').exists() && newData.parent().child('guest').val() === data.parent().child('guest').val()) || (data.val() === 'playing' && newData.val() === 'finished' && (newData.parent().child('resigned').val() === auth.uid || newData.parent().child('revision').val() === data.parent().child('revision').val() + 1))))"
+            },
+            "revision": {
+              ".validate": "newData.isNumber() && ((!data.exists() && newData.val() === 0) || newData.val() === data.val() || (data.parent().child('status').val() === 'playing' && data.parent().child('players').child(auth.uid).child('color').val() === data.parent().child('turn').val() && newData.val() === data.val() + 1 && newData.parent().child('actions').child('' + data.val()).child('uid').val() === auth.uid))"
+            },
+            "turn": {
+              ".validate": "(!data.exists() && newData.val() === 'white') || (data.exists() && ((newData.parent().child('revision').val() === data.parent().child('revision').val() && newData.val() === data.val()) || (newData.parent().child('revision').val() === data.parent().child('revision').val() + 1 && ((newData.parent().child('actions').child('' + data.parent().child('revision').val()).child('type').val() === 'MOVE' && newData.val() === (data.val() === 'white' ? 'black' : 'white')) || (newData.parent().child('actions').child('' + data.parent().child('revision').val()).child('type').val() !== 'MOVE' && newData.val() === data.val())))))"
+            },
+            "players": {
+              ".validate": "newData.child(newData.parent().child('host').val()).exists() && (!newData.parent().child('guest').exists() || newData.child(newData.parent().child('guest').val()).exists())",
+              "$uid": {
+                ".validate": "($uid === newData.parent().parent().child('host').val() || $uid === newData.parent().parent().child('guest').val()) && newData.hasChildren(['name','emblem','color','ready']) && ((!data.exists() && $uid === auth.uid && (!data.parent().exists() || data.parent().parent().child('status').val() === 'waiting')) || data.exists()) && (newData.parent().parent().child('status').val() !== 'playing' || data.parent().parent().child('status').val() !== 'waiting' || data.child('ready').val() === true)",
+                "name": {
+                  ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 24 && (!data.exists() || newData.val() === data.val())"
+                },
+                "emblem": {
+                  ".validate": "(newData.val() === 'crown' || newData.val() === 'flame' || newData.val() === 'moon') && (!data.exists() || newData.val() === data.val())"
+                },
+                "color": {
+                  ".validate": "newData.val() === ($uid === newData.parent().parent().parent().child('host').val() ? 'white' : 'black')"
+                },
+                "ready": {
+                  ".validate": "newData.isBoolean() && ((!data.exists() && newData.val() === false) || newData.val() === data.val() || ($uid === auth.uid && data.parent().parent().parent().child('status').val() === 'waiting' && newData.parent().parent().parent().child('status').val() === 'waiting'))"
+                },
+                "$other": {
+                  ".validate": false
+                }
+              }
+            },
+            "actions": {
+              ".validate": "newData.parent().child('revision').val() > 0 && newData.child('' + (newData.parent().child('revision').val() - 1)).exists()",
+              "$index": {
+                ".validate": "newData.hasChildren(['type','uid']) && (data.exists() || ($index === '' + data.parent().parent().child('revision').val() && data.parent().parent().child('status').val() === 'playing' && newData.child('uid').val() === auth.uid && data.parent().parent().child('players').child(auth.uid).child('color').val() === data.parent().parent().child('turn').val())) && (newData.child('type').val() !== 'MOVE' || newData.hasChildren(['from','to']))",
+                "type": {
+                  ".validate": "(newData.val() === 'MOVE' || newData.val() === 'COUNT' || newData.val() === 'DRAW') && (!data.exists() || newData.val() === data.val())"
+                },
+                "uid": {
+                  ".validate": "newData.isString() && (!data.exists() || newData.val() === data.val())"
+                },
+                "from": {
+                  ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() < 64 && newData.val() % 1 === 0 && (!data.exists() || newData.val() === data.val())"
+                },
+                "to": {
+                  ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() < 64 && newData.val() % 1 === 0 && (!data.exists() || newData.val() === data.val())"
+                },
+                "$other": {
+                  ".validate": false
+                }
+              }
+            },
+            "resigned": {
+              ".validate": "newData.val() === auth.uid && data.parent().child('status').val() === 'playing' && newData.parent().child('status').val() === 'finished' && data.parent().child('players').child(auth.uid).exists()"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        },
+        "presence": {
+          "$room": {
+            ".read": "auth != null && root.child('games/makruk/rooms').child($room).child('players').child(auth.uid).exists()",
+            "$uid": {
+              ".write": "auth != null && auth.uid === $uid && root.child('games/makruk/rooms').child($room).child('players').child(auth.uid).exists()",
+              ".validate": "newData.isBoolean()"
+            }
+          }
+        }
+      }
+    }
+  }
+}

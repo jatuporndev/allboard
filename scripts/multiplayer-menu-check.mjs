@@ -1,0 +1,32 @@
+import {chromium} from '@playwright/test';
+import assert from 'node:assert/strict';
+const browser=await chromium.launch({channel:'chrome',headless:true,args:['--enable-webgl','--ignore-gpu-blocklist']});
+try{
+  const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];
+  page.on('pageerror',e=>errors.push(e.message));
+  await page.goto('http://127.0.0.1:5173');await page.locator('#multiplayer-menu').click();
+  assert.equal(await page.locator('#main-menu').isVisible(),false);
+  assert.equal(await page.locator('#online-menu').isVisible(),false);
+  assert.equal(await page.locator('#scene').isVisible(),true);
+  assert.equal(await page.locator('#pause-game').isVisible(),false);
+  await page.waitForTimeout(1200);
+  await page.screenshot({path:'artifacts/multiplayer-board-desktop.png'});
+  assert.equal(await page.locator('#create-room-form').isVisible(),true);
+  assert.equal(await page.locator('#join-room-form').isVisible(),true);
+  assert.equal(await page.locator('#public-room-list').isVisible(),true);
+  assert.match(await page.locator('#room-name').inputValue(),/^room-\d{6}$/);
+  await page.locator('[data-visibility=private]').click();
+  assert.equal(await page.locator('[data-visibility=private]').getAttribute('aria-pressed'),'true');
+  await page.locator('#room-name').fill('Temple duel');
+  await page.locator('#random-room-name').click();
+  assert.match(await page.locator('#room-name').inputValue(),/^room-\d{6}$/);
+  await page.screenshot({path:'artifacts/multiplayer-hall-desktop.png'});
+  await page.setViewportSize({width:390,height:844});
+  await page.screenshot({path:'artifacts/multiplayer-hall-mobile.png',fullPage:true});
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+  await page.locator('#private-room-code').fill('ABCDEF123456');
+  assert.equal(await page.locator('#private-room-code').inputValue(),'ABCDEF123456');
+  await page.locator('#multiplayer-exit').click();assert.equal(await page.locator('#main-menu').isVisible(),true);
+  assert.deepEqual(errors,[]);
+  console.log('Multiplayer hall passed: create/join/browser shown together, visibility selection, random/editable names, mobile layout, back navigation.');
+}finally{await browser.close();}
