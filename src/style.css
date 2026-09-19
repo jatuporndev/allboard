@@ -25,7 +25,12 @@ body:not(.in-menu){overflow:hidden}body:not(.in-menu) main{position:fixed;inset:
 .menu-options .difficulty-card small{font-size:11px;letter-spacing:1px;color:#dfc78f}
 .menu-options .difficulty-card span,.menu-options .difficulty-card em{display:block;float:none;clear:both;font:11px/1.5 'DM Sans',sans-serif;letter-spacing:0;color:#bfc3ac;margin-top:9px}
 .menu-options .devil-card{border-color:#c86d4d88;background:linear-gradient(120deg,#752d243d,#331c181a)}
+.menu-options .playable-card{border-color:#72ad7988;background:linear-gradient(120deg,#285a343d,#1637221a)}
+.menu-options .playable-card strong{color:#a6d6a0}
+.menu-options .playable-card:hover:not(:disabled){border-color:#8fc18f;background:#42794926}
 .menu-options .devil-card strong,.menu-options .devil-card small{color:#edaa86}
 .menu-options .devil-card em{font-size:10px;font-style:normal;color:#c7957d;margin-top:4px}
 .difficulty-badge{margin-top:7px;text-align:right;font-size:9px;letter-spacing:.5px;color:#d9c28d}
 .difficulty-badge[data-difficulty=devil]{color:#efa381}
+.difficulty-badge[data-difficulty=playable]{color:#a6d6a0}
+@media(max-width:600px){.menu-content:has(#difficulty-menu:not([hidden])) h1{font-size:64px;margin:18px 0}.menu-content:has(#difficulty-menu:not([hidden])) .menu-verse{margin:18px 0 22px}}

@@ -12,8 +12,9 @@ export function mountMenu(){
    <div id="mode-menu" class="menu-options" hidden><div class="menu-kicker">CHOOSE YOUR OPPONENT</div><button id="solo-game" class="menu-primary">Solo <small>VS BOT</small></button><button id="local-game">Local 2 Player <small>SHARED DEVICE</small></button><button id="mode-back" class="menu-back">← Back</button></div>
    <div id="difficulty-menu" class="menu-options" role="group" aria-labelledby="difficulty-title" hidden>
     <div id="difficulty-title" class="menu-kicker">CHOOSE YOUR CHALLENGE</div>
-    <button id="casual-game" class="difficulty-card casual-card"><strong>Casual</strong><small>5/10</small><span>A thoughtful rival. Room to learn.</span></button>
-    <button id="devil-game" class="difficulty-card devil-card"><strong>Devil</strong><small>10/10</small><span>Deeper calculation. A tougher fight.</span><em>Takes more time to think.</em></button>
+    <button id="playable-game" class="difficulty-card playable-card"><strong>Playable</strong><span>A gentle start. Learn the board.</span></button>
+    <button id="casual-game" class="difficulty-card casual-card"><strong>Casual</strong><span>A thoughtful rival. Room to learn.</span></button>
+    <button id="devil-game" class="difficulty-card devil-card"><strong>Devil</strong><span>Deeper calculation. A tougher fight.</span><em>Takes more time to think.</em></button>
     <button id="difficulty-back" class="menu-back">← Back</button>
    </div>
   </div><div class="menu-bottom"><span>หมากรุกไทย · THE ART OF THAI CHESS</span><span>STRATEGY, CARVED IN STONE</span></div>

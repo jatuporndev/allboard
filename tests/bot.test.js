@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {initialState,allMoves,applyAction,positionKey,inCheck} from '../src/game/rules.js';
 import {chooseBotMove,analyzeBotMove} from '../src/game/bot.js';
 import {getBotDifficulty} from '../src/game/bot-difficulty.js';
+import {analyzePlayableMove} from '../src/game/bot-playable.js';
 test('bot chooses legal replies without mutating the match',()=>{
  let state=initialState();
  for(let i=0;i<6;i++){
@@ -22,6 +23,23 @@ function position(entries,turn='white'){
  s.positions=[positionKey(s)];return s;
 }
 const mateEntries=[[5,'K','black'],[14,'R','white'],[16,'K','white'],[24,'P','black'],[36,'R','white']];
+test('Playable restores the original two-ply decisions and keeps the match immutable',()=>{
+ assert.equal(getBotDifficulty('playable').id,'playable');
+ const state=position(mateEntries),before=JSON.stringify(state);
+ const result=analyzePlayableMove(state);
+ assert.deepEqual(result.move,{from:14,to:12});
+ assert.equal(result.depth,2);
+ assert.equal(JSON.stringify(state),before);
+ assert.notDeepEqual(result.move,chooseBotMove(state,searchOptions));
+ let game=initialState();
+ for(let i=0;i<6;i++){
+  const snapshot=JSON.stringify(game),analysis=analyzePlayableMove(game);
+  assert.ok(allMoves(game).some(m=>m.from===analysis.move.from&&m.to===analysis.move.to));
+  assert.equal(JSON.stringify(game),snapshot);
+  game=applyAction(game,{type:'MOVE',...analysis.move});
+ }
+ assert.equal(analyzePlayableMove({...state,result:{winner:null,reason:'Draw'}}).move,null);
+});
 test('Casual preserves existing budgets and Devil enables deeper search',()=>{
  const casual=getBotDifficulty('casual'),devil=getBotDifficulty('devil');
  assert.deepEqual(casual.options,{timeMs:1800,maxDepth:6,maxNodes:150000,quiescenceDepth:6});

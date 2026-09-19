@@ -56,7 +56,7 @@ $('mode-back').onclick=()=>{showModes(false);$('start-menu').focus();};
 function startGame(mode,side='white',difficulty='casual'){
  rig.setSide(side);cancelBot();gameMode=mode;botDifficulty=getBotDifficulty(difficulty);
  $('solo-difficulty').hidden=mode!=='solo';
- $('solo-difficulty').textContent=botDifficulty.label+' · '+botDifficulty.rating;
+ $('solo-difficulty').textContent=botDifficulty.label;
  $('solo-difficulty').dataset.difficulty=botDifficulty.id;
  playing=true;document.body.classList.remove('in-menu');$('main-menu').hidden=true;
  store.reset();cameraMode('orbit');rig.home();
@@ -64,9 +64,9 @@ function startGame(mode,side='white',difficulty='casual'){
  document.querySelector('.black h3').textContent=mode==='solo'?'The Ember King':'Obsidian dynasty';
  world.resize();rig.home({immediate:mode==='online'});$('pause-game').focus();
 }
-$('solo-game').onclick=()=>{$('mode-menu').hidden=true;$('difficulty-menu').hidden=false;$('casual-game').focus();};
+$('solo-game').onclick=()=>{$('mode-menu').hidden=true;$('difficulty-menu').hidden=false;$('playable-game').focus();};
 $('difficulty-back').onclick=()=>{showModes(true);$('solo-game').focus();};
-for(const id of ['casual','devil'])$(id+'-game').onclick=()=>startGame('solo','white',id);
+for(const id of ['playable','casual','devil'])$(id+'-game').onclick=()=>startGame('solo','white',id);
 $('local-game').onclick=()=>startGame('local');
 $('return-menu').onclick=async()=>{if(animator.busy)return;if(gameMode==='online'){try{await leaveOnline();}catch(error){toast(error.message);return;}}cancelBot();playing=false;$('pause-dialog').close();document.exitPointerLock?.();rig.keys.clear();rig.orbit.enabled=false;selected=null;moves=[];world.highlight(null,[],store.state);document.body.classList.add('in-menu');$('main-menu').hidden=false;showModes(false);world.resize();$('start-menu').focus();};
 rig.orbit.enabled=false;

@@ -32,6 +32,8 @@ test('selected difficulty follows each request, including after cancellation',()
  f.request({ply:1},'casual');
  assert.equal(f.workers[2].data.difficulty,'casual');
  assert.equal(f.workers[1].terminated,true);
+ f.request({ply:1},'playable');
+ assert.equal(f.workers[3].data.difficulty,'playable');
 });
 test('worker startup and search errors release resources and allow retry',()=>{
  const f=fixture();
