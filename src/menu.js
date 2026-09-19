@@ -10,6 +10,13 @@ export function mountMenu(){
    <p class="menu-verse">Kingdoms fall. The fire remembers.</p>
    <div id="menu-home" class="menu-options"><button id="start-menu" class="menu-primary">Start Game <span>⟶</span></button><button id="character-menu">Create Character <small>YOUR LEGEND</small></button><button id="multiplayer-menu">Multiplayer <small>ONLINE</small></button><button id="settings-menu">Settings <span>⚙</span></button></div>
    <div id="mode-menu" class="menu-options" hidden><div class="menu-kicker">CHOOSE YOUR OPPONENT</div><button id="solo-game" class="menu-primary">Solo <small>VS BOT</small></button><button id="local-game">Local 2 Player <small>SHARED DEVICE</small></button><button id="mode-back" class="menu-back">← Back</button></div>
+   <div id="difficulty-menu" class="menu-options" role="group" aria-labelledby="difficulty-title" hidden>
+    <div id="difficulty-title" class="menu-kicker">CHOOSE YOUR CHALLENGE</div>
+    <button id="playable-game" class="difficulty-card playable-card"><strong>Playable</strong><span>A gentle start. Learn the board.</span></button>
+    <button id="casual-game" class="difficulty-card casual-card"><strong>Casual</strong><span>A thoughtful rival. Room to learn.</span></button>
+    <button id="devil-game" class="difficulty-card devil-card"><strong>Devil</strong><span>Deeper calculation. A tougher fight.</span><em>Takes more time to think.</em></button>
+    <button id="difficulty-back" class="menu-back">← Back</button>
+   </div>
   </div><div class="menu-bottom"><span>หมากรุกไทย · THE ART OF THAI CHESS</span><span>STRATEGY, CARVED IN STONE</span></div>
  </section>
  <dialog id="settings-dialog"><div class="eyebrow">SHAPE YOUR SANCTUARY</div><h2>Settings</h2><label class="setting-row">Battle sounds <input id="setting-sound" type="checkbox"></label><label class="setting-row">Cinematic menu motion <input id="setting-motion" type="checkbox" checked></label><p>Sound accompanies moves and captures. Your preferences are saved on this device.</p><button id="settings-close" class="menu-primary">Return</button></dialog>`);

@@ -12,11 +12,14 @@ import {Animator} from './scene/animation.js';
 import {mount,renderUI} from './ui.js';
 import {mountMenu} from './menu.js';
 import {BotClient} from './game/bot-client.js';
+import {getBotDifficulty} from './game/bot-difficulty.js';
 import {mountHUD} from './hud.js';
 mount();const $=id=>document.getElementById(id),store=new GameStore();let selected=null,moves=[],toastTimer;
 function toast(message){$('toast').textContent=message;$('toast').classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.remove('show'),2800);}
 mountMenu();mountHUD();let playing=false,gameMode='local',botTimer,menuMotion=true;
 const bot=new BotClient();
+let botDifficulty=getBotDifficulty('casual');
+document.querySelector('.obsidian').insertAdjacentHTML('beforeend','<div id="solo-difficulty" class="difficulty-badge" hidden></div>');
 function cancelBot(){clearTimeout(botTimer);bot.cancel();}
 let world;
 let multiplayerPreview=false;
@@ -31,7 +34,7 @@ function scheduleBot(){
   bot.request(state,({move})=>{
    if(store.state!==state||!playing||isPaused()||gameMode!=='solo'||animator.busy)return;
    if(move&&legalMoves(state,move.from).includes(move.to))playMove(move.from,move.to);
-  },()=>{if(store.state===state&&playing&&gameMode==='solo')toast('The bot could not finish thinking. Pause and resume to retry.');});
+  },()=>{if(store.state===state&&playing&&gameMode==='solo')toast('The bot could not finish thinking. Pause and resume to retry.');},botDifficulty.id);
  },250);
 }
 function playMove(from,to){if(gameMode==='online'){sendOnline({type:'MOVE',from,to});return;}const next=store.dispatch({type:'MOVE',from,to});animator.move(next.history.at(-1),()=>{world.sync(next);animator.checkmate(next,refresh);refresh();if(next.result)toast(next.result.winner?`${next.result.winner==='white'?'Ivory':'Obsidian'} wins: ${next.result.reason}`:`Draw: ${next.result.reason}`);else if(inCheck(next.board,next.turn))toast('Check - protect your Khun.');else if(next.history.at(-1).promoted)toast('Bia awakened - promoted to Bia Ngai.');scheduleBot();});refresh();}
@@ -47,11 +50,24 @@ $('orbit').onclick=()=>cameraMode('orbit');$('fly').onclick=()=>cameraMode('fly'
 $('rules').onclick=()=>{document.exitPointerLock?.();rig.keys.clear();$('guide').showModal();};document.querySelector('.close').onclick=()=>$('guide').close();$('new-game').onclick=()=>{if(animator.busy)return;if(!store.state.ply){store.reset();toast('A new legend begins.');}else {cancelBot();$('new-dialog').showModal();}};$('confirm-new').onclick=()=>{cancelBot();store.reset();$('new-dialog').close();toast('A new legend begins.');};document.querySelector('.close-new').onclick=()=>$('new-dialog').close();$('undo').onclick=()=>{if(!animator.busy){cancelBot();store.undo();if(gameMode==='solo'&&store.state.turn==='black')store.undo();toast('Last turn undone.');}};$('count').onclick=()=>{if(gameMode==='online')sendOnline({type:'COUNT'});else if(!animator.busy)store.dispatch({type:'COUNT'});};$('accept-draw').onclick=()=>{if(gameMode==='online')sendOnline({type:'DRAW'});else if(!animator.busy)store.dispatch({type:'DRAW'});};
 let last=performance.now(),elapsed=0;function frame(now){const dt=Math.min((now-last)/1000,.04);last=now;elapsed+=dt;world.update(elapsed);if(!isPaused()||gameMode==='online'){animator.update(dt);effects.update(dt);}if(playing){if(!isPaused())rig.update(dt,elapsed);}else if(multiplayerPreview){rig.update(dt,elapsed);}else{const t=menuMotion?elapsed:0;world.camera.position.set(7+Math.sin(t*.09)*1.3,4.4+Math.sin(t*.12)*.25,12.5);world.camera.lookAt(0,3,-7);}world.render();requestAnimationFrame(frame);}requestAnimationFrame(frame);
 
-function showModes(show){$('menu-home').hidden=show;$('mode-menu').hidden=!show;}
+function showModes(show){$('menu-home').hidden=show;$('mode-menu').hidden=!show;$('difficulty-menu').hidden=true;}
 $('start-menu').onclick=()=>{showModes(true);$('solo-game').focus();};
 $('mode-back').onclick=()=>{showModes(false);$('start-menu').focus();};
-function startGame(mode,side='white'){rig.setSide(side);cancelBot();gameMode=mode;playing=true;document.body.classList.remove('in-menu');$('main-menu').hidden=true;store.reset();cameraMode('orbit');rig.home();document.querySelector('.live-label').textContent=mode==='solo'?'SOLO / VS THE EMBER KING':'LOCAL TWO-PLAYER';document.querySelector('.black h3').textContent=mode==='solo'?'The Ember King':'Obsidian dynasty';world.resize();rig.home({immediate:mode==='online'});$('pause-game').focus();}
-$('solo-game').onclick=()=>startGame('solo');$('local-game').onclick=()=>startGame('local');
+function startGame(mode,side='white',difficulty='casual'){
+ rig.setSide(side);cancelBot();gameMode=mode;botDifficulty=getBotDifficulty(difficulty);
+ $('solo-difficulty').hidden=mode!=='solo';
+ $('solo-difficulty').textContent=botDifficulty.label;
+ $('solo-difficulty').dataset.difficulty=botDifficulty.id;
+ playing=true;document.body.classList.remove('in-menu');$('main-menu').hidden=true;
+ store.reset();cameraMode('orbit');rig.home();
+ document.querySelector('.live-label').textContent=mode==='solo'?'SOLO / VS THE EMBER KING':'LOCAL TWO-PLAYER';
+ document.querySelector('.black h3').textContent=mode==='solo'?'The Ember King':'Obsidian dynasty';
+ world.resize();rig.home({immediate:mode==='online'});$('pause-game').focus();
+}
+$('solo-game').onclick=()=>{$('mode-menu').hidden=true;$('difficulty-menu').hidden=false;$('playable-game').focus();};
+$('difficulty-back').onclick=()=>{showModes(true);$('solo-game').focus();};
+for(const id of ['playable','casual','devil'])$(id+'-game').onclick=()=>startGame('solo','white',id);
+$('local-game').onclick=()=>startGame('local');
 $('return-menu').onclick=async()=>{if(animator.busy)return;if(gameMode==='online'){try{await leaveOnline();}catch(error){toast(error.message);return;}}cancelBot();playing=false;$('pause-dialog').close();document.exitPointerLock?.();rig.keys.clear();rig.orbit.enabled=false;selected=null;moves=[];world.highlight(null,[],store.state);document.body.classList.add('in-menu');$('main-menu').hidden=false;showModes(false);world.resize();$('start-menu').focus();};
 rig.orbit.enabled=false;
 let preferences={};try{preferences=JSON.parse(localStorage.getItem('crown-settings')||'{}')||{};}catch{}

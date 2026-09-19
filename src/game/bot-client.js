@@ -4,7 +4,7 @@ export class BotClient {
     this.createWorker=createWorker;this.worker=null;
   }
   cancel(){this.worker?.terminate();this.worker=null;}
-  request(state,onResult,onError){
+  request(state,onResult,onError,difficulty='casual'){
     this.cancel();
     let worker;
     try{
@@ -14,7 +14,7 @@ export class BotClient {
         this.cancel();if(data.error)onError();else onResult(data.analysis);
       };
       worker.onerror=()=>{if(this.worker===worker){this.cancel();onError();}};
-      worker.postMessage({state});
+      worker.postMessage({state,difficulty});
     }catch{this.cancel();onError();}
   }
 }
