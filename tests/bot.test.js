@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import {initialState,allMoves,applyAction,positionKey,inCheck} from '../src/game/rules.js';
 import {chooseBotMove,analyzeBotMove} from '../src/game/bot.js';
+import {getBotDifficulty} from '../src/game/bot-difficulty.js';
 test('bot chooses legal replies without mutating the match',()=>{
  let state=initialState();
  for(let i=0;i<6;i++){
@@ -21,6 +22,27 @@ function position(entries,turn='white'){
  s.positions=[positionKey(s)];return s;
 }
 const mateEntries=[[5,'K','black'],[14,'R','white'],[16,'K','white'],[24,'P','black'],[36,'R','white']];
+test('Casual preserves existing budgets and Devil enables deeper search',()=>{
+ const casual=getBotDifficulty('casual'),devil=getBotDifficulty('devil');
+ assert.deepEqual(casual.options,{timeMs:1800,maxDepth:6,maxNodes:150000,quiescenceDepth:6});
+ assert.ok(devil.options.timeMs>casual.options.timeMs);
+ assert.ok(devil.options.maxDepth>casual.options.maxDepth);
+ assert.ok(devil.options.maxNodes>casual.options.maxNodes);
+ assert.ok(devil.options.quiescenceDepth>casual.options.quiescenceDepth);
+ assert.equal(devil.options.useOrderingHeuristics,true);
+ assert.equal(getBotDifficulty('unknown'),casual);
+ assert.equal(getBotDifficulty('__proto__'),casual);
+});
+test('Devil move ordering preserves tactical outcomes and does not mutate positions',()=>{
+ for(const entries of [mateEntries,[[0,'K','white'],[63,'K','black'],[24,'R','white'],[32,'P','black'],[40,'R','black']]]){
+  const state=position(entries),before=JSON.stringify(state);
+  const casual=analyzeBotMove(state,searchOptions);
+  const devil=analyzeBotMove(state,{...searchOptions,useOrderingHeuristics:true});
+  assert.equal(devil.depth,casual.depth);assert.equal(devil.score,casual.score);
+  assert.ok(allMoves(state).some(m=>m.from===devil.move.from&&m.to===devil.move.to));
+  assert.equal(JSON.stringify(state),before);
+ }
+});
 test('finds a forced mate in two for either color, beyond the old two-ply horizon',()=>{
  for(const color of ['white','black']){
   const entries=color==='white'?mateEntries:mateEntries.map(([i,t,c])=>[63-i,t,c==='white'?'black':'white']);

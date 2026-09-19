@@ -34,16 +34,24 @@ export function evaluatePosition(s){
 
 // Iterative deepening retains only completed iterations. All branches use the
 // actual game rules, including threefold repetition and Makruk honor counting.
-export function analyzeBotMove(state,{timeMs=1800,maxDepth=6,maxNodes=150000,quiescenceDepth=6}={}){
+export function analyzeBotMove(state,{timeMs=1800,maxDepth=6,maxNodes=150000,quiescenceDepth=6,useOrderingHeuristics=false}={}){
   const start=performance.now(),deadline=start+Math.max(0,timeMs);
   let nodes=0,depth=0,score=null;
   // Cache moves for ordering, never scores: identical boards can have different
   // repetition histories and counting limits, which affect their true value.
   const preferred=new Map();
+  const killers=[],history=new Map();
+  const moveKey=(s,m)=>s.turn+':'+m.from+':'+m.to;
   function tick(){if(nodes>=maxNodes||performance.now()>=deadline)throw STOP;nodes++;}
   function terminal(s,ply){return s.result.winner?(s.result.winner===s.turn?MATE-ply:-MATE+ply):0;}
-  function ordered(s,moves,hint){
-    const priority=m=>same(m,hint)?1000000:(s.board[m.to]?10000+values[s.board[m.to].type]*10-values[s.board[m.from].type]:0)+(promotion(s,m)?2000:0);
+  function ordered(s,moves,hint,ply){
+    const priority=m=>{
+      if(same(m,hint))return 1000000;
+      if(s.board[m.to]||promotion(s,m))return (s.board[m.to]?10000+values[s.board[m.to].type]*10-values[s.board[m.from].type]:0)+(promotion(s,m)?2000:0);
+      if(!useOrderingHeuristics)return 0;
+      if(killers[ply]?.some(k=>same(k,m)))return 1900;
+      return Math.min(1800,history.get(moveKey(s,m))||0);
+    };
     return moves.map(m=>({m,p:priority(m)})).sort((a,b)=>b.p-a.p).map(v=>v.m);
   }
   function child(s,m){return applyAction(s,{type:'MOVE',...m});}
@@ -69,13 +77,21 @@ export function analyzeBotMove(state,{timeMs=1800,maxDepth=6,maxNodes=150000,qui
   function search(s,remaining,alpha,beta,ply){
     tick();if(s.result)return terminal(s,ply);
     if(remaining<=0)return quiet(s,alpha,beta,quiescenceDepth,ply);
-    const key=positionKey(s),moves=ordered(s,allMoves(s),preferred.get(key));
+    const key=positionKey(s),moves=ordered(s,allMoves(s),preferred.get(key),ply);
     if(!moves.length)return inCheck(s.board,s.turn)?-MATE+ply:0;
     let best=-Infinity,bestMove=moves[0];
     for(const m of moves){
       const value=-search(child(s,m),remaining-1,-beta,-alpha,ply+1);
       if(value>best){best=value;bestMove=m;}alpha=Math.max(alpha,value);
-      if(alpha>=beta)break;
+      if(alpha>=beta){
+        // Quiet moves that refute a line often refute nearby lines too. These
+        // hints change search order only; no legal move or reply is omitted.
+        if(useOrderingHeuristics&&!s.board[m.to]&&!promotion(s,m)){
+          killers[ply]=[m,...(killers[ply]||[]).filter(k=>!same(k,m))].slice(0,2);
+          const id=moveKey(s,m);history.set(id,Math.min(1800,(history.get(id)||0)+remaining*remaining));
+        }
+        break;
+      }
     }
     preferred.set(key,bestMove);return best;
   }
