@@ -3,6 +3,17 @@ import {mkdir} from 'node:fs/promises';
 const browser=await chromium.launch({channel:'chrome',headless:true,args:['--enable-webgl','--ignore-gpu-blocklist']});
 const page=await browser.newPage({viewport:{width:1440,height:1000},deviceScaleFactor:1});
 await page.addInitScript(()=>localStorage.setItem('crown-language','en'));
+await page.addInitScript(()=>{
+ const NativeWorker=window.Worker;
+ window.botSearches=[];
+ window.Worker=class extends NativeWorker{
+  constructor(url,options){
+   super(url,options);
+   if(String(url).includes('bot-worker')){this.record={active:true};window.botSearches.push(this.record);}
+  }
+  terminate(){if(this.record)this.record.active=false;super.terminate();}
+ };
+});
 const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error'&&/THREE|shader|WebGL/i.test(m.text()))errors.push(m.text());});
 await page.goto('http://127.0.0.1:5173');await page.waitForSelector('#scene');await page.waitForTimeout(1800);
 await mkdir('artifacts',{recursive:true});await page.screenshot({path:'artifacts/desktop.png',fullPage:true});
@@ -21,7 +32,14 @@ await page.locator('#fly').click();await page.locator('#resume-game').click();aw
 await page.setViewportSize({width:390,height:844});await page.waitForTimeout(1400);await page.screenshot({path:'artifacts/mobile.png',fullPage:true});await page.locator('#pause-game').click();await page.screenshot({path:'artifacts/pause-mobile.png'});await page.locator('#resume-game').click();const overflow=await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth);if(overflow)throw Error('Mobile horizontal overflow');
 if(!await page.locator('#pause-dialog').isVisible())await page.locator('#pause-game').click();await page.locator('#return-menu').click();await page.locator('#start-menu').click();await page.locator('#solo-game').click();await page.waitForTimeout(1400);
 await page.setViewportSize({width:1440,height:1000});await page.waitForTimeout(1400);
-await clickSquare(20);await clickSquare(28);await page.locator('#pause-game').click();await page.waitForTimeout(1800);if(await page.locator('#move-number').innerText()!=='01 MOVES')throw Error('Bot moved while paused');await page.screenshot({path:'artifacts/pause-desktop.png'});await page.keyboard.press('Escape');await page.waitForFunction(()=>document.querySelector('#move-number').textContent==='02 MOVES'&&!document.querySelector('#new-game').disabled,{},{timeout:20000});
+await clickSquare(20);await clickSquare(28);await page.locator('#pause-game').click();await page.waitForTimeout(1800);if(await page.locator('#move-number').innerText()!=='01 MOVES')throw Error('Bot moved while paused');await page.screenshot({path:'artifacts/pause-desktop.png'});await page.keyboard.press('Escape');
+await page.waitForFunction(()=>window.botSearches.some(s=>s.active),{},{timeout:20000});
+await page.locator('#pause-game').click();
+if(await page.evaluate(()=>window.botSearches.some(s=>s.active)))throw Error('Paused search worker is still active');
+await page.waitForTimeout(2000);
+if(await page.locator('#move-number').innerText()!=='01 MOVES')throw Error('Cancelled search moved a piece');
+await page.keyboard.press('Escape');
+await page.waitForFunction(()=>document.querySelector('#move-number').textContent==='02 MOVES'&&!document.querySelector('#new-game').disabled,{},{timeout:20000});
 await page.locator('#pause-game').click();await page.locator('#undo').click();if(await page.locator('#move-number').innerText()!=='00 MOVES')throw Error('Solo undo failed');
 if(!await page.locator('#pause-dialog').isVisible())await page.locator('#pause-game').click();await page.locator('#return-menu').click();if(!await page.locator('#multiplayer-menu').isEnabled()||!await page.locator('#character-menu').isEnabled())throw Error('Online menus unavailable');
 await page.locator('#settings-menu').click();await page.locator('#setting-motion').uncheck();await page.locator('#settings-close').click();
