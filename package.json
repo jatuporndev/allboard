@@ -7,7 +7,7 @@
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0",
-    "test": "node --test tests/rules.test.js tests/animation.test.js tests/bot.test.js tests/camera.test.js tests/online.test.js",
+    "test": "node --test tests/rules.test.js tests/animation.test.js tests/bot.test.js tests/bot-client.test.js tests/camera.test.js tests/online.test.js",
     "deploy": "npm run build && firebase deploy",
     "test:browser": "node scripts/browser-check.mjs",
     "test:warriors": "node scripts/warrior-check.mjs"

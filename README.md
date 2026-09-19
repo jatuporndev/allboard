@@ -4,7 +4,19 @@ Matches fill the viewport with compact player plaques and a central turn indicat
 
 ## Crown of Embers main menu
 
-The game opens in a cinematic temple menu. Choose **Start Game**, then **Solo** to play Ivory against the Ember King bot, or **Local 2 Player** to share a device. Solo uses a two-ply legal-move search; Undo takes back the human/bot turn. Main menu returns to the title screen; selecting a mode starts a fresh match.
+The game opens in a cinematic temple menu. Choose **Start Game**, then **Solo** to play Ivory against the Ember King bot, or **Local 2 Player** to share a device. Solo uses the search described below; Undo takes back the human/bot turn. Main menu returns to the title screen; selecting a mode starts a fresh match.
+
+### How the Ember King thinks
+
+The bot searches increasingly deep lines using negamax with alpha-beta pruning, retaining the best move from the last completed iteration. Each turn has a 1.8-second search budget, a maximum normal depth of six plies (a ply is one player's move), and a 150,000-node safety limit. Actual depth depends on the position and device. Captures, promotions, and the previous iteration's preferred moves are examined first, so bad branches can be rejected earlier.
+
+At the search horizon, quiescence search follows captures and promotions for up to six additional plies and extends check evasions instead of treating check as a position where the bot can pass. Long check sequences have a safety cap. Evaluation weighs material, central control, mobility, development, pawn advancement and promotion prospects, and king centralization in low-material endings. Promoted Bia have Met strength. Checkmate outranks material, with faster mates preferred.
+
+Every searched move uses the same immutable rules as human play, preserving honor-count draws, threefold repetition, and promotion. Cached moves only influence search order; cached board scores are avoided because counting and repetition depend on history. No neural model, paid API, or additional runtime dependency is needed. Solo history stays in memory; this bot does not train on Firebase logs or learn automatically between games.
+
+Search runs in a Web Worker to keep rendering and controls responsive. Pause, undo, reset, and leaving the match cancel the worker; obsolete replies cannot move pieces in a new position. Resume starts a fresh search. If a worker fails, the UI reports the failure and pause/resume allows retry.
+
+Bot regression tests cover forced mate in two for both colors, poisoned captures, check escapes, promotion, repetition and counting draws, search budgets, immutability, and worker cancellation. Run `npm test`; `npm run test:browser` also exercises Solo pause/resume and undo with the dev server running. Search background: [University of Basel game-search lecture](https://ai.dmi.unibas.ch/_files/teaching/fs25/ai/slides/ai-g02.pdf).
 
 Create Room and Join Room are disabled and marked Coming Soon. No online service is connected. Settings saves battle sound and menu camera motion preferences locally. The existing Makruk rules, world, captures, and camera controls remain available in matches.
 
@@ -86,4 +98,4 @@ With the Vite server running, `/dev/warriors.html` opens a development sculpture
 
 Three.js, Vite, and their direct use here are MIT-licensed. Playwright is Apache-2.0-licensed and used only for development verification. Google Fonts supplies DM Sans and Cormorant Garamond under the SIL Open Font License; local system fonts are fallbacks when offline. No paid assets or commercial-use restrictions are introduced by these direct dependencies; distributed dependencies retain their own license notices.
 
-This prototype is local two-player: no AI opponent, online play, clocks, or persistence. Camera boundaries protect the floor, board plinth, walls, and columns; it is a free-flight controller rather than a full physics simulation. Captures have a brief camera lens pulse in orbit mode; the player's camera controls remain available. Warriors use hierarchical rigid-body rigs and authored procedural choreography, with stylized debris physics rather than a ragdoll solver. WebGL and hardware acceleration are required; pixel ratio is capped for performance.
+Solo includes the Ember King bot described above; local two-player matches are also available. Local and Solo games have no clocks or persistent match storage. Camera boundaries protect the floor, board plinth, walls, and columns; it is a free-flight controller rather than a full physics simulation. Captures have a brief camera lens pulse in orbit mode; the player's camera controls remain available. Warriors use hierarchical rigid-body rigs and authored procedural choreography, with stylized debris physics rather than a ragdoll solver. WebGL and hardware acceleration are required; pixel ratio is capped for performance.
